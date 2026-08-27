@@ -3,6 +3,7 @@
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:dd="clr-namespace:v2rayN.Desktop.DesignData"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:resx="clr-namespace:ServiceLib.Resx;assembly=ServiceLib"
     xmlns:vms="clr-namespace:ServiceLib.ViewModels;assembly=ServiceLib"
@@ -10,6 +11,7 @@
     Width="900"
     Height="600"
     x:DataType="vms:RoutingRuleSettingViewModel"
+    Design.DataContext="{x:Static dd:DesignData.RoutingRuleSetting}"
     ShowInTaskbar="False"
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
@@ -184,14 +186,32 @@
                     <DataGrid.ContextMenu>
                         <ContextMenu>
                             <MenuItem x:Name="menuRuleAdd2" Header="{x:Static resx:ResUI.menuRuleAdd}" />
-                            <MenuItem x:Name="menuRuleRemove" Header="{x:Static resx:ResUI.menuRuleRemove}" />
-                            <MenuItem x:Name="menuRuleSelectAll" Header="{x:Static resx:ResUI.menuSelectAll}" />
+                            <MenuItem
+                                x:Name="menuRuleRemove"
+                                Header="{x:Static resx:ResUI.menuRuleRemove}"
+                                InputGesture="Back" />
+                            <MenuItem
+                                x:Name="menuRuleSelectAll"
+                                Header="{x:Static resx:ResUI.menuSelectAll}"
+                                InputGesture="Ctrl+A" />
                             <MenuItem x:Name="menuRuleExportSelected" Header="{x:Static resx:ResUI.menuRuleExportSelected}" />
                             <Separator />
-                            <MenuItem x:Name="menuMoveTop" Header="{x:Static resx:ResUI.menuMoveTop}" />
-                            <MenuItem x:Name="menuMoveUp" Header="{x:Static resx:ResUI.menuMoveUp}" />
-                            <MenuItem x:Name="menuMoveDown" Header="{x:Static resx:ResUI.menuMoveDown}" />
-                            <MenuItem x:Name="menuMoveBottom" Header="{x:Static resx:ResUI.menuMoveBottom}" />
+                            <MenuItem
+                                x:Name="menuMoveTop"
+                                Header="{x:Static resx:ResUI.menuMoveTop}"
+                                InputGesture="T" />
+                            <MenuItem
+                                x:Name="menuMoveUp"
+                                Header="{x:Static resx:ResUI.menuMoveUp}"
+                                InputGesture="U" />
+                            <MenuItem
+                                x:Name="menuMoveDown"
+                                Header="{x:Static resx:ResUI.menuMoveDown}"
+                                InputGesture="D" />
+                            <MenuItem
+                                x:Name="menuMoveBottom"
+                                Header="{x:Static resx:ResUI.menuMoveBottom}"
+                                InputGesture="B" />
                         </ContextMenu>
                     </DataGrid.ContextMenu>
                     <DataGrid.Columns>
@@ -230,7 +250,7 @@
                         <DataGridTextColumn
                             Width="*"
                             Binding="{Binding Domains}"
-                            Header="domain / ip" />
+                            Header="domain / ip / process" />
                     </DataGrid.Columns>
                 </DataGrid>
             </TabItem>

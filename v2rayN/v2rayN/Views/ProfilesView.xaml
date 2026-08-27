@@ -123,11 +123,13 @@
                         <MenuItem
                             x:Name="menuSetDefaultServer"
                             Height="{StaticResource MenuItemHeight}"
-                            Header="{x:Static resx:ResUI.menuSetDefaultServer}" />
+                            Header="{x:Static resx:ResUI.menuSetDefaultServer}"
+                            InputGestureText="Enter" />
                         <MenuItem
                             x:Name="menuEditServer"
                             Height="{StaticResource MenuItemHeight}"
-                            Header="{x:Static resx:ResUI.menuEditServer}" />
+                            Header="{x:Static resx:ResUI.menuEditServer}"
+                            InputGestureText="Ctrl+D" />
                         <MenuItem
                             x:Name="menuCopyServer"
                             Height="{StaticResource MenuItemHeight}"
@@ -135,7 +137,8 @@
                         <MenuItem
                             x:Name="menuRemoveServer"
                             Height="{StaticResource MenuItemHeight}"
-                            Header="{x:Static resx:ResUI.menuRemoveServer}" />
+                            Header="{x:Static resx:ResUI.menuRemoveServer}"
+                            InputGestureText="Back" />
                         <MenuItem
                             x:Name="menuRemoveDuplicateServer"
                             Height="{StaticResource MenuItemHeight}"
@@ -148,15 +151,22 @@
                         <MenuItem
                             x:Name="menuTcpingServer"
                             Height="{StaticResource MenuItemHeight}"
-                            Header="{x:Static resx:ResUI.menuTcpingServer}" />
+                            Header="{x:Static resx:ResUI.menuTcpingServer}"
+                            InputGestureText="Ctrl+O" />
                         <MenuItem
                             x:Name="menuRealPingServer"
                             Height="{StaticResource MenuItemHeight}"
-                            Header="{x:Static resx:ResUI.menuRealPingServer}" />
+                            Header="{x:Static resx:ResUI.menuRealPingServer}"
+                            InputGestureText="Ctrl+R" />
+                        <MenuItem
+                            x:Name="menuUdpTestServer"
+                            Height="{StaticResource MenuItemHeight}"
+                            Header="{x:Static resx:ResUI.menuUdpTestServer}" />
                         <MenuItem
                             x:Name="menuSpeedServer"
                             Height="{StaticResource MenuItemHeight}"
-                            Header="{x:Static resx:ResUI.menuSpeedServer}" />
+                            Header="{x:Static resx:ResUI.menuSpeedServer}"
+                            InputGestureText="Ctrl+T" />
                         <MenuItem
                             x:Name="menuSortServerResult"
                             Height="{StaticResource MenuItemHeight}"
@@ -184,29 +194,35 @@
                             <MenuItem
                                 x:Name="menuMoveTop"
                                 Height="{StaticResource MenuItemHeight}"
-                                Header="{x:Static resx:ResUI.menuMoveTop}" />
+                                Header="{x:Static resx:ResUI.menuMoveTop}"
+                                InputGestureText="T" />
                             <MenuItem
                                 x:Name="menuMoveUp"
                                 Height="{StaticResource MenuItemHeight}"
-                                Header="{x:Static resx:ResUI.menuMoveUp}" />
+                                Header="{x:Static resx:ResUI.menuMoveUp}"
+                                InputGestureText="U" />
                             <MenuItem
                                 x:Name="menuMoveDown"
                                 Height="{StaticResource MenuItemHeight}"
-                                Header="{x:Static resx:ResUI.menuMoveDown}" />
+                                Header="{x:Static resx:ResUI.menuMoveDown}"
+                                InputGestureText="D" />
                             <MenuItem
                                 x:Name="menuMoveBottom"
                                 Height="{StaticResource MenuItemHeight}"
-                                Header="{x:Static resx:ResUI.menuMoveBottom}" />
+                                Header="{x:Static resx:ResUI.menuMoveBottom}"
+                                InputGestureText="B" />
                         </MenuItem>
                         <MenuItem
                             x:Name="menuSelectAll"
                             Height="{StaticResource MenuItemHeight}"
-                            Header="{x:Static resx:ResUI.menuSelectAll}" />
+                            Header="{x:Static resx:ResUI.menuSelectAll}"
+                            InputGestureText="Ctrl+A" />
                         <Separator />
                         <MenuItem
                             x:Name="menuShareServer"
                             Height="{StaticResource MenuItemHeight}"
-                            Header="{x:Static resx:ResUI.menuShareServer}" />
+                            Header="{x:Static resx:ResUI.menuShareServer}"
+                            InputGestureText="Ctrl+F" />
                         <MenuItem Header="{x:Static resx:ResUI.menuExportConfig}">
                             <MenuItem
                                 x:Name="menuExport2ClientConfig"
@@ -220,39 +236,27 @@
                             <MenuItem
                                 x:Name="menuExport2ShareUrl"
                                 Height="{StaticResource MenuItemHeight}"
-                                Header="{x:Static resx:ResUI.menuExport2ShareUrl}" />
+                                Header="{x:Static resx:ResUI.menuExport2ShareUrl}"
+                                InputGestureText="Ctrl+C" />
                             <MenuItem
                                 x:Name="menuExport2ShareUrlBase64"
                                 Height="{StaticResource MenuItemHeight}"
                                 Header="{x:Static resx:ResUI.menuExport2ShareUrlBase64}" />
+                            <MenuItem
+                                x:Name="menuExport2InnerUri"
+                                Height="{StaticResource MenuItemHeight}"
+                                Header="{x:Static resx:ResUI.menuExport2InnerUri}" />
                         </MenuItem>
                         <Separator />
-                        <MenuItem Header="{x:Static resx:ResUI.menuGenGroupMultipleServer}">
+                        <MenuItem Header="{x:Static resx:ResUI.menuGenGroupServer}">
                             <MenuItem
-                                x:Name="menuGenGroupMultipleServerXrayRandom"
+                                x:Name="menuGenGroupAllServer"
                                 Height="{StaticResource MenuItemHeight}"
-                                Header="{x:Static resx:ResUI.menuGenGroupMultipleServerXrayRandom}" />
+                                Header="{x:Static resx:ResUI.menuAllServers}" />
                             <MenuItem
-                                x:Name="menuGenGroupMultipleServerXrayRoundRobin"
+                                x:Name="menuGenGroupRegionServer"
                                 Height="{StaticResource MenuItemHeight}"
-                                Header="{x:Static resx:ResUI.menuGenGroupMultipleServerXrayRoundRobin}" />
-                            <MenuItem
-                                x:Name="menuGenGroupMultipleServerXrayLeastPing"
-                                Height="{StaticResource MenuItemHeight}"
-                                Header="{x:Static resx:ResUI.menuGenGroupMultipleServerXrayLeastPing}" />
-                            <MenuItem
-                                x:Name="menuGenGroupMultipleServerXrayLeastLoad"
-                                Height="{StaticResource MenuItemHeight}"
-                                Header="{x:Static resx:ResUI.menuGenGroupMultipleServerXrayLeastLoad}" />
-                            <Separator />
-                            <MenuItem
-                                x:Name="menuGenGroupMultipleServerSingBoxLeastPing"
-                                Height="{StaticResource MenuItemHeight}"
-                                Header="{x:Static resx:ResUI.menuGenGroupMultipleServerSingBoxLeastPing}" />
-                            <MenuItem
-                                x:Name="menuGenGroupMultipleServerSingBoxFallback"
-                                Height="{StaticResource MenuItemHeight}"
-                                Header="{x:Static resx:ResUI.menuGenGroupMultipleServerSingBoxFallback}" />
+                                Header="{x:Static resx:ResUI.menuGenRegionGroup}" />
                         </MenuItem>
                     </ContextMenu>
                 </DataGrid.ContextMenu>
@@ -341,6 +345,14 @@
                         Binding="{Binding TodayUp}"
                         ExName="TodayUp"
                         Header="{x:Static resx:ResUI.LvTodayUploadDataAmount}" />
+
+                    <base:MyDGTextColumn
+                        x:Name="colIpInfo"
+                        Width="100"
+                        Binding="{Binding IpInfo}"
+                        ExName="IpInfo"
+                        Header="{x:Static resx:ResUI.LvTestIpInfo}" />
+
                     <base:MyDGTextColumn
                         x:Name="colTodayDown"
                         Width="100"

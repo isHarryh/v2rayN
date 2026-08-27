@@ -5,24 +5,19 @@ namespace v2rayN.Desktop.Views;
 
 public partial class RoutingSettingWindow : WindowBase<RoutingSettingViewModel>
 {
-    private bool _manualClose = false;
-
     public RoutingSettingWindow()
     {
         InitializeComponent();
 
         Loaded += Window_Loaded;
         Closing += RoutingSettingWindow_Closing;
-        btnCancel.Click += (s, e) => Close();
         KeyDown += RoutingSettingWindow_KeyDown;
         lstRoutings.SelectionChanged += lstRoutings_SelectionChanged;
         lstRoutings.DoubleTapped += LstRoutings_DoubleTapped;
         menuRoutingAdvancedSelectAll.Click += menuRoutingAdvancedSelectAll_Click;
 
-        ViewModel = new RoutingSettingViewModel(UpdateViewHandler);
-
         cmbdomainStrategy.ItemsSource = Global.DomainStrategies;
-        cmbdomainStrategy4Singbox.ItemsSource = Global.DomainStrategies4Singbox;
+        cmbdomainStrategy4Singbox.ItemsSource = Global.DomainStrategies4Sbox;
 
         this.WhenActivated(disposables =>
         {
@@ -39,52 +34,58 @@ public partial class RoutingSettingWindow : WindowBase<RoutingSettingViewModel>
             this.BindCommand(ViewModel, vm => vm.RoutingAdvancedImportRulesCmd, v => v.menuRoutingAdvancedImportRules).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.RoutingAdvancedImportRulesCmd, v => v.menuRoutingAdvancedImportRules2).DisposeWith(disposables);
 
-            this.BindCommand(ViewModel, vm => vm.SaveCmd, v => v.btnSave).DisposeWith(disposables);
+            ViewModel.ShowYesNoInteraction.RegisterHandler(async interaction =>
+            {
+                var message = interaction.Input;
+                var result = await UI.ShowYesNo(message);
+                interaction.SetOutput(result == ButtonResult.Yes);
+            }).DisposeWith(disposables);
         });
     }
 
-    private async Task<bool> UpdateViewHandler(EViewAction action, object? obj)
+    private bool _closed = false;
+
+    private void RoutingSettingWindow_Closing(object? sender, WindowClosingEventArgs e)
     {
-        switch (action)
+        if (_closed)
         {
-            case EViewAction.CloseWindow:
-                Close(true);
-                break;
-
-            case EViewAction.ShowYesNo:
-                if (await UI.ShowYesNo(this, ResUI.RemoveRules) != ButtonResult.Yes)
-                {
-                    return false;
-                }
-                break;
-
-            case EViewAction.RoutingRuleSettingWindow:
-                if (obj is null)
-                {
-                    return false;
-                }
-
-                return await new RoutingRuleSettingWindow((RoutingItem)obj).ShowDialog<bool>(this);
+            return;
         }
-        return await Task.FromResult(true);
+
+        // DomainStrategy is auto-saved reactively; just ensure the caller knows changes were made
+        if (ViewModel?.IsModified == true)
+        {
+            e.Cancel = true;
+            _closed = true;
+            Close(true);
+        }
     }
 
     private void RoutingSettingWindow_KeyDown(object? sender, KeyEventArgs e)
     {
         if (e.KeyModifiers is KeyModifiers.Control or KeyModifiers.Meta)
         {
-            if (e.Key == Key.A)
+            switch (e.Key)
             {
-                lstRoutings.SelectAll();
+                case Key.A:
+                    lstRoutings.SelectAll();
+                    break;
             }
         }
-        else if (e.Key is Key.Enter or Key.Return)
+        else
         {
-            ViewModel?.RoutingAdvancedSetDefault();
-        }
-        else if (e.Key == Key.Delete)
-        {
-            ViewModel?.RoutingAdvancedRemoveAsync();
+            switch (e.Key)
+            {
+                case Key.Enter:
+                    //case Key.Return:
+                    ViewModel?.RoutingAdvancedSetDefault();
+                    break;
+
+                case Key.Delete:
+                case Key.Back:
+                    ViewModel?.RoutingAdvancedRemoveAsync();
+                    break;
+            }
         }
     }
 
@@ -116,25 +117,7 @@ public partial class RoutingSettingWindow : WindowBase<RoutingSettingViewModel>
         ProcUtils.ProcessStart("https://sing-box.sagernet.org/zh/configuration/route/rule_action/#strategy");
     }
 
-    private void btnCancel_Click(object? sender, RoutedEventArgs e)
-    {
-        _manualClose = true;
-        Close(ViewModel?.IsModified);
-    }
-
-    private void RoutingSettingWindow_Closing(object? sender, WindowClosingEventArgs e)
-    {
-        if (ViewModel?.IsModified == true)
-        {
-            if (!_manualClose)
-            {
-                btnCancel_Click(null, null);
-            }
-        }
-    }
-
     private void Window_Loaded(object? sender, RoutedEventArgs e)
     {
-        btnCancel.Focus();
     }
 }

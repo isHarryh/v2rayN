@@ -37,9 +37,9 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
             await UpdateFunc(false, string.Format(ResUI.MsgParsingSuccessfully, ECoreType.v2rayN));
             await UpdateFunc(false, result.Msg);
 
-            url = result.Data?.ToString();
+            url = result.Url!;
             fileName = Utils.GetTempPath(Utils.GetGuid());
-            await downloadHandle.DownloadFileAsync(url, fileName, true, _timeout);
+            await downloadHandle.DownloadFileAsync(new() { FileUrl = url, FilePath = fileName }, true, TimeSpan.FromSeconds(_timeout));
         }
         else
         {
@@ -86,10 +86,10 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
             await UpdateFunc(false, string.Format(ResUI.MsgParsingSuccessfully, type));
             await UpdateFunc(false, result.Msg);
 
-            url = result.Data?.ToString();
+            url = result.Url!;
             var ext = url.Contains(".tar.gz") ? ".tar.gz" : Path.GetExtension(url);
             fileName = Utils.GetTempPath(Utils.GetGuid() + ext);
-            await downloadHandle.DownloadFileAsync(url, fileName, true, _timeout);
+            await downloadHandle.DownloadFileAsync(new() { FileUrl = url, FilePath = fileName }, true, TimeSpan.FromSeconds(_timeout));
         }
         else
         {
@@ -100,36 +100,77 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
         }
     }
 
+    public async Task<UpdateResult> CheckHasUpdateOnly(ECoreType type, bool preRelease)
+    {
+        if (!CoreInfoManager.Instance.IsCheckUpdateSupported(type))
+        {
+            return new UpdateResult(false, ResUI.MsgNotSupport);
+        }
+
+        var downloadHandle = new DownloadService();
+        var checkPreRelease = CoreInfoManager.Instance.GetCheckPreRelease(type, preRelease);
+        return await CheckUpdateAsync(downloadHandle, type, checkPreRelease);
+    }
+
+    public async Task<List<string>> CheckHasUpdateOnlyAll(bool preRelease)
+    {
+        var msgs = new List<string>();
+        foreach (var type in CoreInfoManager.Instance.GetCheckUpdateCoreTypes())
+        {
+            if (!(_config.CheckUpdateItem.SelectedCoreTypes?.Contains(type.ToString()) ?? true))
+            {
+                continue;
+            }
+
+            var result = await CheckHasUpdateOnly(type, preRelease);
+            if (result.Success && result.Version != null)
+            {
+                var msg = string.Format(ResUI.MsgCheckUpdateHasNewVersion, type, result.Version);
+                msgs.Add(msg);
+                AppManager.Instance.SetLastCheckUpdateResult(type, msg);
+            }
+            else
+            {
+                AppManager.Instance.SetLastCheckUpdateResult(type, result.Msg);
+            }
+        }
+        return msgs;
+    }
+
     public async Task UpdateGeoFileAll()
     {
-        await UpdateGeoFiles();
-        await UpdateOtherFiles();
-        await UpdateSrsFileAll();
+        var requests = new List<FileDownloadRequest>();
+        requests.AddRange(GetGeoFilesRequest());
+        requests.AddRange(GetOtherFilesRequest());
+        requests.AddRange(await GetSrsFileAllRequest());
+        // NOTE: srs files are more small, so we reverse the order to ensure a good download experience for the user.
+        requests.Reverse();
+        await DownloadGeoFiles(requests);
         await UpdateFunc(true, string.Format(ResUI.MsgDownloadGeoFileSuccessfully, "geo"));
     }
 
     #region CheckUpdate private
 
-    private async Task<RetResult> CheckUpdateAsync(DownloadService downloadHandle, ECoreType type, bool preRelease)
+    private async Task<UpdateResult> CheckUpdateAsync(DownloadService downloadHandle, ECoreType type, bool preRelease)
     {
         try
         {
             var result = await GetRemoteVersion(downloadHandle, type, preRelease);
-            if (!result.Success || result.Data is null)
+            if (!result.Success || result.Version is null)
             {
                 return result;
             }
-            return await ParseDownloadUrl(type, (SemanticVersion)result.Data);
+            return await ParseDownloadUrl(type, result);
         }
         catch (Exception ex)
         {
             Logging.SaveLog(_tag, ex);
             await UpdateFunc(false, ex.Message);
-            return new RetResult(false, ex.Message);
+            return new UpdateResult(false, ex.Message);
         }
     }
 
-    private async Task<RetResult> GetRemoteVersion(DownloadService downloadHandle, ECoreType type, bool preRelease)
+    private async Task<UpdateResult> GetRemoteVersion(DownloadService downloadHandle, ECoreType type, bool preRelease)
     {
         var coreInfo = CoreInfoManager.Instance.GetCoreInfo(type);
         var tagName = string.Empty;
@@ -139,7 +180,7 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
             var result = await downloadHandle.TryDownloadString(url, true, Global.AppName);
             if (result.IsNullOrEmpty())
             {
-                return new RetResult(false, "");
+                return new UpdateResult(false, "");
             }
 
             var gitHubReleases = JsonUtils.Deserialize<List<GitHubRelease>>(result);
@@ -153,12 +194,12 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
             var lastUrl = await downloadHandle.UrlRedirectAsync(url, true);
             if (lastUrl == null)
             {
-                return new RetResult(false, "");
+                return new UpdateResult(false, "");
             }
 
             tagName = lastUrl?.Split("/tag/").LastOrDefault();
         }
-        return new RetResult(true, "", new SemanticVersion(tagName));
+        return new UpdateResult(true, new SemanticVersion(tagName));
     }
 
     private async Task<SemanticVersion> GetCoreVersion(ECoreType type)
@@ -213,10 +254,11 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
         }
     }
 
-    private async Task<RetResult> ParseDownloadUrl(ECoreType type, SemanticVersion version)
+    private async Task<UpdateResult> ParseDownloadUrl(ECoreType type, UpdateResult result)
     {
         try
         {
+            var version = result.Version ?? new SemanticVersion(0, 0, 0);
             var coreInfo = CoreInfoManager.Instance.GetCoreInfo(type);
             var coreUrl = await GetUrlFromCore(coreInfo) ?? string.Empty;
             SemanticVersion curVersion;
@@ -260,16 +302,17 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
 
             if (curVersion >= version && version != new SemanticVersion(0, 0, 0))
             {
-                return new RetResult(false, message);
+                return new UpdateResult(false, message);
             }
 
-            return new RetResult(true, "", url);
+            result.Url = url;
+            return result;
         }
         catch (Exception ex)
         {
             Logging.SaveLog(_tag, ex);
             await UpdateFunc(false, ex.Message);
-            return new RetResult(false, ex.Message);
+            return new UpdateResult(false, ex.Message);
         }
     }
 
@@ -289,13 +332,6 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
                 return url;
             }
 
-            //Check for standalone windows .Net version
-            if (File.Exists(Path.Combine(Utils.GetBaseDirectory(), "wpfgfx_cor3.dll"))
-                && File.Exists(Path.Combine(Utils.GetBaseDirectory(), "D3DCompiler_47_cor3.dll")))
-            {
-                return url?.Replace(".zip", "-SelfContained.zip");
-            }
-
             //Check for avalonia desktop windows version
             if (File.Exists(Path.Combine(Utils.GetBaseDirectory(), "libHarfBuzzSharp.dll")))
             {
@@ -309,6 +345,8 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
             return RuntimeInformation.ProcessArchitecture switch
             {
                 Architecture.Arm64 => coreInfo?.DownloadUrlLinuxArm64,
+                Architecture.RiscV64 => coreInfo?.DownloadUrlLinuxRiscV64,
+                Architecture.LoongArch64 => coreInfo?.DownloadUrlLinuxLoong64,
                 Architecture.X64 => coreInfo?.DownloadUrlLinux64,
                 _ => null,
             };
@@ -329,95 +367,153 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
 
     #region Geo private
 
-    private async Task UpdateGeoFiles()
+    private List<FileDownloadRequest> GetGeoFilesRequest()
     {
         var geoUrl = string.IsNullOrEmpty(_config?.ConstItem.GeoSourceUrl)
             ? Global.GeoUrl
             : _config.ConstItem.GeoSourceUrl;
 
         List<string> files = ["geosite", "geoip"];
-        foreach (var geoName in files)
-        {
-            var fileName = $"{geoName}.dat";
-            var targetPath = Utils.GetBinPath($"{fileName}");
-            var url = string.Format(geoUrl, geoName);
-
-            await DownloadGeoFile(url, fileName, targetPath);
-        }
+        return
+        [
+            .. from geoName in files
+            let fileName = $"{geoName}.dat"
+            let targetPath = Utils.GetBinPath($"{fileName}")
+            let url = string.Format(geoUrl, geoName)
+            select new FileDownloadRequest()
+            {
+                FileUrl = url,
+                FilePath = targetPath,
+                DisplayFileName = fileName,
+            },
+        ];
     }
 
-    private async Task UpdateOtherFiles()
+    private List<FileDownloadRequest> GetOtherFilesRequest()
     {
         //If it is not in China area, no update is required
         if (_config.ConstItem.GeoSourceUrl.IsNotEmpty())
         {
-            return;
+            return [];
         }
 
-        foreach (var url in Global.OtherGeoUrls)
-        {
-            var fileName = Path.GetFileName(url);
-            var targetPath = Utils.GetBinPath($"{fileName}");
-
-            await DownloadGeoFile(url, fileName, targetPath);
-        }
+        return
+        [
+            .. Global.OtherGeoUrls.Select(url =>
+            {
+                var fileName = Path.GetFileName(url);
+                var targetPath = Utils.GetBinPath($"{fileName}");
+                return new FileDownloadRequest()
+                {
+                    FileUrl = url,
+                    FilePath = targetPath,
+                    DisplayFileName = fileName,
+                };
+            }),
+        ];
     }
 
-    private async Task UpdateSrsFileAll()
+    private async Task<List<FileDownloadRequest>> GetSrsFileAllRequest()
     {
         var geoipFiles = new List<string>();
         var geoSiteFiles = new List<string>();
 
-        //Collect used files list
+        // Collect from routing rules
         var routingItems = await AppManager.Instance.RoutingItems();
         foreach (var routing in routingItems)
         {
             var rules = JsonUtils.Deserialize<List<RulesItem>>(routing.RuleSet);
             foreach (var item in rules ?? [])
             {
-                foreach (var ip in item.Ip ?? [])
-                {
-                    var prefix = "geoip:";
-                    if (ip.StartsWith(prefix))
-                    {
-                        geoipFiles.Add(ip.Substring(prefix.Length));
-                    }
-                }
-
-                foreach (var domain in item.Domain ?? [])
-                {
-                    var prefix = "geosite:";
-                    if (domain.StartsWith(prefix))
-                    {
-                        geoSiteFiles.Add(domain.Substring(prefix.Length));
-                    }
-                }
+                AddPrefixedItems(item.Ip, Global.GeoIPPrefix, geoipFiles);
+                AddPrefixedItems(item.Domain, Global.GeoSitePrefix, geoSiteFiles);
             }
         }
 
-        //append dns items TODO
-        geoSiteFiles.Add("google");
-        geoSiteFiles.Add("cn");
-        geoSiteFiles.Add("geolocation-cn");
-        geoSiteFiles.Add("category-ads-all");
+        // Collect from DNS configuration
+        var dnsItem = await AppManager.Instance.GetDNSItem(ECoreType.sing_box);
+        if (dnsItem != null)
+        {
+            ExtractDnsRuleSets(dnsItem.NormalDNS, geoipFiles, geoSiteFiles);
+            ExtractDnsRuleSets(dnsItem.TunDNS, geoipFiles, geoSiteFiles);
+        }
 
+        // Append default items
+        geoSiteFiles.AddRange(["google", "cn", "geolocation-cn", "category-ads-all"]);
+
+        // Download files
         var path = Utils.GetBinPath("srss");
         if (!Directory.Exists(path))
         {
             Directory.CreateDirectory(path);
         }
-        foreach (var item in geoipFiles.Distinct())
+
+        return
+        [
+            .. geoipFiles.Distinct().Select(f => (type: "geoip", file: f))
+                .Concat(geoSiteFiles.Distinct().Select(f => (type: "geosite", file: f)))
+                .Select(item => GetSrsFileRequest(item.type, item.file)),
+        ];
+    }
+
+    private void AddPrefixedItems(List<string>? items, string prefix, List<string> output)
+    {
+        if (items == null)
         {
-            await UpdateSrsFile("geoip", item);
+            return;
         }
 
-        foreach (var item in geoSiteFiles.Distinct())
+        foreach (var item in items)
         {
-            await UpdateSrsFile("geosite", item);
+            if (item.StartsWith(prefix))
+            {
+                output.Add(item.Substring(prefix.Length));
+            }
         }
     }
 
-    private async Task UpdateSrsFile(string type, string srsName)
+    private void ExtractDnsRuleSets(string? dnsJson, List<string> geoipFiles, List<string> geoSiteFiles)
+    {
+        if (string.IsNullOrEmpty(dnsJson))
+        {
+            return;
+        }
+
+        try
+        {
+            var dns = JsonUtils.Deserialize<Dns4Sbox>(dnsJson);
+            if (dns?.rules != null)
+            {
+                foreach (var rule in dns.rules)
+                {
+                    ExtractSrsRuleSets(rule, geoipFiles, geoSiteFiles);
+                }
+            }
+        }
+        catch { }
+    }
+
+    private void ExtractSrsRuleSets(Rule4Sbox? rule, List<string> geoipFiles, List<string> geoSiteFiles)
+    {
+        if (rule == null)
+        {
+            return;
+        }
+
+        AddPrefixedItems(rule.rule_set, "geosite-", geoSiteFiles);
+        AddPrefixedItems(rule.rule_set, "geoip-", geoipFiles);
+
+        // Handle nested rules recursively
+        if (rule.rules != null)
+        {
+            foreach (var nestedRule in rule.rules)
+            {
+                ExtractSrsRuleSets(nestedRule, geoipFiles, geoSiteFiles);
+            }
+        }
+    }
+
+    private FileDownloadRequest GetSrsFileRequest(string type, string srsName)
     {
         var srsUrl = string.IsNullOrEmpty(_config.ConstItem.SrsSourceUrl)
                         ? Global.SingboxRulesetUrl
@@ -427,33 +523,57 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
         var targetPath = Path.Combine(Utils.GetBinPath("srss"), fileName);
         var url = string.Format(srsUrl, type, $"{type}-{srsName}", srsName);
 
-        await DownloadGeoFile(url, fileName, targetPath);
+        return new FileDownloadRequest()
+        {
+            FileUrl = url,
+            FilePath = targetPath,
+            DisplayFileName = fileName,
+        };
     }
 
-    private async Task DownloadGeoFile(string url, string fileName, string targetPath)
+    private async Task DownloadGeoFiles(List<FileDownloadRequest> requests)
     {
-        var tmpFileName = Utils.GetTempPath(Utils.GetGuid());
+        var tmpFilePathDict = new Dictionary<string, string>();
+        var tmpFileRequests = new List<FileDownloadRequest>();
+        foreach (var request in requests)
+        {
+            var tmpFilePath = Utils.GetTempPath(Utils.GetGuid());
+            tmpFilePathDict[request.FilePath] = tmpFilePath;
+            tmpFileRequests.Add(request with
+            {
+                FilePath = tmpFilePath,
+            });
+        }
 
         DownloadService downloadHandle = new();
         downloadHandle.UpdateCompleted += (sender2, args) =>
         {
             if (args.Success)
             {
-                _ = UpdateFunc(false, string.Format(ResUI.MsgDownloadGeoFileSuccessfully, fileName));
+                //_ = UpdateFunc(false, string.Format(ResUI.MsgDownloadGeoFileSuccessfully, fileName));
 
-                try
+                foreach (var request in requests)
                 {
-                    if (File.Exists(tmpFileName))
+                    try
                     {
-                        File.Copy(tmpFileName, targetPath, true);
+                        //if (File.Exists(tmpFileName))
+                        //{
+                        //    File.Copy(tmpFileName, targetPath, true);
 
-                        File.Delete(tmpFileName);
-                        //await    UpdateFunc(true, "");
+                        //    File.Delete(tmpFileName);
+                        //    //await    UpdateFunc(true, "");
+                        //}
+                        var tmpFileName = tmpFilePathDict[request.FilePath];
+                        if (File.Exists(tmpFileName))
+                        {
+                            File.Copy(tmpFileName, request.FilePath, true);
+                            File.Delete(tmpFileName);
+                        }
                     }
-                }
-                catch (Exception ex)
-                {
-                    _ = UpdateFunc(false, ex.Message);
+                    catch (Exception ex)
+                    {
+                        _ = UpdateFunc(false, ex.Message);
+                    }
                 }
             }
             else
@@ -466,7 +586,7 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
             _ = UpdateFunc(false, args.GetException().Message);
         };
 
-        await downloadHandle.DownloadFileAsync(url, tmpFileName, true, _timeout);
+        await downloadHandle.DownloadSmallFilesAsync(tmpFileRequests, true, TimeSpan.FromSeconds(_timeout));
     }
 
     #endregion Geo private

@@ -1,4 +1,4 @@
-﻿<reactiveui:ReactiveUserControl
+<reactiveui:ReactiveUserControl
     x:Class="v2rayN.Views.CheckUpdateView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -33,20 +33,18 @@
                 HorizontalAlignment="Left" />
 
             <Button
+                x:Name="btnCheckOnly"
+                Width="100"
+                Margin="{StaticResource Margin8}"
+                Content="{x:Static resx:ResUI.menuCheckOnly}"
+                Style="{StaticResource DefButton}" />
+
+            <Button
                 x:Name="btnCheckUpdate"
                 Width="100"
                 Margin="{StaticResource Margin8}"
                 Content="{x:Static resx:ResUI.menuCheckUpdate}"
                 IsDefault="True"
-                Style="{StaticResource DefButton}" />
-
-            <Button
-                Width="100"
-                Margin="{StaticResource Margin8}"
-                HorizontalAlignment="Right"
-                Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
-                Content="{x:Static resx:ResUI.menuClose}"
-                IsCancel="True"
                 Style="{StaticResource DefButton}" />
         </StackPanel>
 
@@ -86,7 +84,7 @@
                                 <TextBlock
                                     Grid.Column="1"
                                     Style="{StaticResource ListItemTitle}"
-                                    Text="{Binding CoreType}" />
+                                    Text="{Binding CoreTypeForStorage}" />
                                 <TextBlock
                                     Grid.Column="2"
                                     Style="{StaticResource ListItemSubTitle}"
